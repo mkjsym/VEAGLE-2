@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=7
 
 CKPT_PATH=$1
 TOK_PROCESS=$2
@@ -11,11 +11,11 @@ echo "TOK_PROCESS: ${TOK_PROCESS}"
 echo "NUM_IMG_TOK: ${NUM_IMG_TOK}"
 
 python -m model_vqa_eagle \
-    --model-path /home/sangjun/.cache/huggingface/hub/models--llava-hf--llava-1.5-7b-hf/snapshots/6ceb2ed33cb8f107a781c431fe2e61574da69369 \
+    --model-path llava-hf/llava-1.5-7b-hf \
     --ea-model-path ${CKPT_PATH} \
-    --question-file /data/coco_caption/coco_question.jsonl \
-    --image-folder /data/coco/val2014 \
-    --answers-file ${CKPT_PATH}/coco_cap_t0_0.jsonl \
+    --question-file /data2/coco_caption/coco_question.jsonl \
+    --image-folder /data2/coco/val2014 \
+    --answers-file ./coco_cap_t0_0.jsonl \
     --temperature 0 \
     --conv-mode vicuna_v1 \
     --token-process ${TOK_PROCESS} \

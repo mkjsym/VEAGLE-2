@@ -241,6 +241,7 @@ class EaModel(nn.Module):
             
 
     ):
+        attentions = []
         tgt_tokens = []
         dft_tokens = []
         start, end = start_timer()#timer start
@@ -283,9 +284,10 @@ class EaModel(nn.Module):
         
         start, end = start_timer()#timer start
         
-        draft_tokens, retrieve_indices,tree_mask,tree_position_ids, logits, hidden_state, sample_token = initialize_tree(
+        draft_tokens, retrieve_indices,tree_mask,tree_position_ids, logits, hidden_state, sample_token, new_attentions = initialize_tree(
             input_ids, self, pixel_values, past_key_values, logits_processor, token_process, num_img_tokens
         )
+        attentions.extend(new_attentions)
         
         initialize_tree_time = end_timer(start, end, name="initialize_tree")#timer end
         new_token = 0
@@ -333,7 +335,7 @@ class EaModel(nn.Module):
             
             #print(accept_length)
             #with Timer("update_inference_inputs"):
-            input_ids, draft_tokens, retrieve_indices,tree_mask,tree_position_ids, new_token, hidden_state, sample_token, tgt_tokens, dft_tokens = update_inference_inputs(
+            input_ids, draft_tokens, retrieve_indices,tree_mask,tree_position_ids, new_token, hidden_state, sample_token, tgt_tokens, dft_tokens, new_attentions = update_inference_inputs(
                 input_ids,
                 candidates,
                 best_candidate,
@@ -370,7 +372,7 @@ class EaModel(nn.Module):
         if not log:
             return input_ids
         else:
-            return input_ids, new_token, idx, avg_accept_length, initialize_time, initialize_tree_time, tree_decode_total_time, evaluate_posterior_total_time, update_inference_inputs_total_time, tgt_tokens, dft_tokens
+            return input_ids, new_token, idx, avg_accept_length, initialize_time, initialize_tree_time, tree_decode_total_time, evaluate_posterior_total_time, update_inference_inputs_total_time, tgt_tokens, dft_tokens, attentions
 
 
     @torch.no_grad()

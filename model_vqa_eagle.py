@@ -54,8 +54,9 @@ def eval_model(args):
         torch_dtype=torch.float16,
         low_cpu_mem_usage=True,
         device_map="auto",
-        total_token=100,
-        depth=10
+        total_token=30,
+        top_k=8,
+        depth=3
     )
     #yuhuili/EAGLE-Vicuna-7B-v1.3
     model.eval()
@@ -88,7 +89,7 @@ def eval_model(args):
         
         
         with torch.inference_mode():
-            output_ids, _ , _ , avg_accept_length, initialize_time, initialize_tree_time, tree_decode_total_time, evaluate_posterior_total_time, update_inference_inputs_total_time,_,_ = model.eagenerate(
+            output_ids, _ , _ , avg_accept_length, initialize_time, initialize_tree_time, tree_decode_total_time, evaluate_posterior_total_time, update_inference_inputs_total_time, *rest = model.eagenerate(
                 input_ids=torch.as_tensor(inputs["input_ids"]).cuda(), 
                 pixel_values=torch.as_tensor(inputs["pixel_values"]).cuda(),
                 temperature=args.temperature,
