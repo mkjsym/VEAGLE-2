@@ -412,6 +412,111 @@ def keep_topk_image_token(
 
     return filtered_input_ids, filtered_hidden_states, filtered_image_features
 
+def keep_aircache_image_token(
+    input_ids,
+        img_tok_index,
+        hidden_states=None,
+        attentions=None,
+        image_features=None,
+        topk=20,
+        alpha=0.9  # AirCache 논문에서 제시한 relevance threshold (기본값 0.9) [cite: 239]
+    ):
+    """
+    AirCache 알고리즘을 적용한 Image Token Compression 함수
+    
+    input_ids: [1, seq_len]
+    hidden_states: [1, seq_len, dim]
+    attentions: list of [1, heads, seq_len, seq_len] (전체 레이어의 어텐션 맵)
+    image_features: [1, N_img, dim] or [N_img, dim]
+    alpha: Key text token 선정을 위한 임계값 비율
+    """
+
+    input_ids = input_ids[0]  # [seq_len]
+    device = input_ids.device
+
+    # 1. 이미지 토큰과 텍스트 토큰의 위치 인덱스 분리
+    image_token_indices = (input_ids == img_tok_index).nonzero(as_tuple=True)[0] # [N_img]
+    text_token_indices = (input_ids != img_tok_index).nonzero(as_tuple=True)[0]  # [N_text]
+
+    if hidden_states is None:
+        # hidden_states가 없으면 단순 인덱싱 (앞부분만 자르기 등) - AirCache 적용 불가하므로 기존 로직 유지
+        topk_indices_global = image_token_indices[:topk]
+        topk_indices_local = torch.arange(len(topk_indices_global), device=device)
+    else:
+        assert attentions is not None, "AirCache를 적용하려면 attentions 맵이 필요합니다."
+        
+        # AirCache는 시맨틱 연결이 형성된 깊은 레이어의 어텐션을 사용하는 것이 유리하므로 마지막 레이어 사용 권장
+        # [heads, seq_len, seq_len] -> [seq_len, seq_len] (Head 평균)
+        # 논문에서는 Head별 처리를 명시하진 않았으나, 통상적으로 중요도 계산 시 Head Average를 사용합니다.
+        last_layer_attn = attentions[-1][0].mean(dim=0) 
+
+        # --- AirCache Step 1: Elite Observation Window (Key Text Tokens Selection) ---
+        # 논문 Eq (5): 마지막 텍스트 토큰(명령어의 끝)을 기준으로 다른 텍스트 토큰들의 중요도를 평가
+        last_text_idx = text_token_indices[-1]
+        
+        # 마지막 텍스트 토큰이 다른 텍스트 토큰들에 주는 어텐션 점수 추출
+        text_to_text_attn = last_layer_attn[last_text_idx, text_token_indices] # [N_text]
+        
+        # Threshold 계산: Max score의 alpha 배 이상인 토큰만 선정
+        max_att_score = text_to_text_attn.max()
+        threshold = alpha * max_att_score
+        
+        # Key Text Token의 인덱스 마스크 생성
+        key_text_mask = text_to_text_attn >= threshold
+        key_text_indices = text_token_indices[key_text_mask] # [N_key_text]
+        
+        # 만약 threshold가 너무 높아 선택된게 없다면, 마지막 토큰만이라도 사용 (안전장치)
+        if len(key_text_indices) == 0:
+            key_text_indices = text_token_indices[-1:]
+
+        # --- AirCache Step 2: Importance Assessment for Visual Tokens ---
+        # 논문 Eq (7), (8): Key Text Tokens가 Visual Token들에 주는 어텐션 점수의 평균을 계산
+        
+        # [N_key_text, N_img] : 핵심 텍스트 토큰(Query) -> 이미지 토큰(Key) 간의 어텐션
+        key_text_to_img_attn = last_layer_attn[key_text_indices][:, image_token_indices]
+        
+        # 텍스트 축(dim=0)으로 평균을 내어 각 이미지 토큰의 최종 중요도 점수 산출 (Eq. 8)
+        image_token_scores = key_text_to_img_attn.mean(dim=0) # [N_img]
+
+        # --- Top-K Selection ---
+        topk = min(topk, image_token_scores.size(0))
+        topk_indices_local = torch.topk(image_token_scores, topk).indices
+        
+        # 원래 시퀀스 내에서의 글로벌 인덱스로 변환 (순서 보장을 위해 정렬 권장)
+        topk_indices_global = image_token_indices[topk_indices_local]
+        topk_indices_global, _ = topk_indices_global.sort()
+        
+        # local 인덱스도 global 순서에 맞춰 재정렬 (feature 필터링용)
+        # image_token_indices 내에서 topk_indices_global이 가리키는 위치를 찾아야 함
+        # 여기서는 간단히 다시 매핑
+        mask_in_img = torch.zeros(len(image_token_indices), dtype=torch.bool, device=device)
+        mask_in_img[topk_indices_local] = True
+        topk_indices_local = mask_in_img.nonzero(as_tuple=True)[0]
+
+    # 마스크 생성 및 필터링 (기존 로직과 동일)
+    text_mask = input_ids != img_tok_index
+    topk_img_mask = torch.zeros_like(input_ids, dtype=torch.bool)
+    topk_img_mask[topk_indices_global] = True
+    final_mask = text_mask | topk_img_mask
+
+    # input_ids 필터링
+    filtered_input_ids = input_ids[final_mask].unsqueeze(0) # [1, new_seq_len]
+
+    # hidden_states 필터링
+    filtered_hidden_states = None
+    if hidden_states is not None:
+        filtered_hidden_states = hidden_states[0][final_mask, :].unsqueeze(0)
+
+    # image_features 필터링
+    filtered_image_features = None
+    if image_features is not None:
+        if image_features.dim() == 3:
+            filtered_image_features = image_features[:, topk_indices_local, :]
+        else:
+            filtered_image_features = image_features[topk_indices_local].unsqueeze(0)
+
+    return filtered_input_ids, filtered_hidden_states, filtered_image_features
+
 def nothing_image_token(input_ids, img_tok_index, hidden_states=None):
     if hidden_states is not None:
         return input_ids, hidden_states
@@ -429,6 +534,8 @@ def initialize_tree(input_ids, model, pixel_values, past_key_values, logits_proc
         process_token = remove_image_token_except_first
     elif token_process == 5:
         process_token = keep_topk_image_token
+    elif token_process == 6:
+        process_token = keep_aircache_image_token
     else :
         process_token = nothing_image_token
     
@@ -651,6 +758,8 @@ def update_inference_inputs(
         process_token = remove_image_token_except_first
     elif token_process == 5:
         process_token = keep_topk_image_token
+    elif token_process == 6:
+        process_token = keep_aircache_image_token
     else :
         process_token = nothing_image_token
         

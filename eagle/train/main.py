@@ -1,22 +1,49 @@
 import argparse
 import warnings
+import os
 warnings.filterwarnings("ignore", category=UserWarning, message="TypedStorage is deprecated")
 
+# [수정] list_files 함수를 설정 구성(train_config) 전으로 이동
+def list_files(path):
+    datapath = []
+    for root, directories, files in os.walk(path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            datapath.append(file_path)
+    return datapath
+
 parser = argparse.ArgumentParser(description='sp')
-parser.add_argument('--basepath', type=str, default='/home/sangjun/.cache/huggingface/hub/models--llava-hf--llava-1.5-7b-hf/snapshots/6ceb2ed33cb8f107a781c431fe2e61574da69369')
+parser.add_argument('--basepath', type=str, default='/data/youngmin/models/llava-1.5-7b-hf')
 parser.add_argument('--configpath', type=str, default="config.json")
-parser.add_argument('--pretrainedpath', type=str, default='/data/sangjun/ckpt/pretrain/state_50')
+parser.add_argument('--pretrainedpath', type=str, default='/data/youngmin/legacy_sangjun/legacy_sangjun_data/ckpt/pretrain/state_50')
 parser.add_argument('--lr', type=float, default=3e-5)
 parser.add_argument('--bs', type=int, default=4 )
 parser.add_argument('--epoch', type=int, default=20)
 parser.add_argument('--gradient-accumulation-steps', type=int, default=1)
 parser.add_argument('--tmpdir', type=str, default='0')
-parser.add_argument('--data_num', type=int, default=259736)
+#parser.add_argument('--data_num', type=int, default=259736)
+parser.add_argument('--data_num', type=int, default=67999)
 parser.add_argument('--cpdir', type=str, default='0')
 args = parser.parse_args()
 
+# [수정 시작] -----------------------------------------------------------
+# 1. 실제 데이터 경로에서 파일 목록을 먼저 가져옵니다.
+print(f"Scanning files in {args.tmpdir}...")
+datapath = list_files(args.tmpdir)
+real_data_num = len(datapath)
+
+if real_data_num == 0:
+    raise ValueError(f"No files found in {args.tmpdir}. Please check the --tmpdir path.")
+
+print(f"Auto-detected data_num: {real_data_num}")
+
+# 2. args.data_num을 실제 개수로 덮어씁니다.
+args.data_num = real_data_num
+
+# 3. total_steps와 warm_steps를 실제 데이터 개수 기반으로 계산합니다.
 total_steps = int(args.data_num * 0.95 * (args.epoch + 1) / (args.bs * args.gradient_accumulation_steps))
 warm_steps = total_steps // 100
+# [수정 끝] -------------------------------------------------------------
 
 train_config = {
     "lr": args.lr,
@@ -76,7 +103,7 @@ from transformers import get_linear_schedule_with_warmup, AutoConfig, LlavaForCo
 
 if accelerator.is_main_process:
     import wandb
-    wandb.init(project="ess", entity="eslab_sj", config=train_config)
+    wandb.init(project="veagle-2", config=train_config)
 
 baseconfig = AutoConfig.from_pretrained(args.basepath).text_config
 head = torch.nn.Linear(baseconfig.hidden_size, baseconfig.vocab_size, bias=False)
@@ -104,13 +131,13 @@ for param in head.parameters():
     param.requires_grad = False
 
 
-def list_files(path):
-    datapath = []
-    for root, directories, files in os.walk(path):
-        for file in files:
-            file_path = os.path.join(root, file)
-            datapath.append(file_path)
-    return datapath
+# def list_files(path):
+#     datapath = []
+#     for root, directories, files in os.walk(path):
+#         for file in files:
+#             file_path = os.path.join(root, file)
+#             datapath.append(file_path)
+#     return datapath
 
 
 class AddGaussianNoise:
@@ -307,7 +334,7 @@ if train_config["data_noise"]:
 else:
     aug = None
 
-datapath = list_files(train_config["datapath"])
+#datapath = list_files(train_config["datapath"])
 
 traindatapath = datapath[:int(len(datapath) * 0.95)]
 testdatapath = datapath[int(len(datapath) * 0.95):]

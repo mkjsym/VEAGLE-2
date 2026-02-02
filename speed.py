@@ -2,11 +2,11 @@ import json
 import numpy as np
 
 # JSONL 파일 경로 설정
-#jsonl_file1 = "/home/youngmin/workspace/temp_veagle/EAGLE-LLAVA/coco_cap_t0_0.jsonl"  # 첫 번째 JSONL 파일 경로
-jsonl_file1 = "/home/youngmin/workspace/temp_veagle/EAGLE-LLAVA/mm_vet_t0_0.jsonl"  # 첫 번째 JSONL 파일 경로
+jsonl_file1 = "/home/youngmin/workspace/VEAGLE-2/coco_cap_t0_0.jsonl"  # 첫 번째 JSONL 파일 경로
+#jsonl_file1 = "/home/youngmin/workspace/VEAGLE-2/mm_vet_t0_0.jsonl"  # 첫 번째 JSONL 파일 경로
 #jsonl_file2 = "/home/sangjun/LLaVA/scripts/v1_5/eval/playground/data/eval/mm-vet/answers_1gpu/llava-v1.5-7b.jsonl"  # 두 번째 JSONL 파일 경로
-#jsonl_file2 = "/home/youngmin/workspace/llava-v1.5-7b_t1_coco.jsonl"  # 두 번째 JSONL 파일 경로
-jsonl_file2 = "/home/youngmin/workspace/llava-v1.5-7b_t1.jsonl"  # 두 번째 JSONL 파일 경로
+jsonl_file2 = "/home/youngmin/workspace/llava-v1.5-7b_t1_coco.jsonl"  # 두 번째 JSONL 파일 경로 (cococap)
+#jsonl_file2 = "/home/youngmin/workspace/llava-v1.5-7b_t1_mmvet.jsonl"  # 두 번째 JSONL 파일 경로 (mmvet)
 
 
 def calculate_avg_total_time(jsonl_file):
