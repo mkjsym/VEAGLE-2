@@ -1,4 +1,4 @@
-# python eagle/ge_data/ge_data_all_llava_unified_aircache.py --start 0 --end 67999 --outdir /data/dataset_aircache --auto_distribute
+# python eagle/ge_data/ge_data_all_llava_unified_aircache.py --start 0 --end 67999 --outdir /data/dataset_aircache_top100 --auto_distribute
 import argparse
 import os
 import sys
@@ -321,7 +321,7 @@ def ge(data):
         image_features, 
         outs_big.attentions,
         img_tok_index=32000,
-        topk=20,    
+        topk=100,    
         alpha=0.9
     )
     

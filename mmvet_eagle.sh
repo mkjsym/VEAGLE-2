@@ -14,7 +14,7 @@ python -m model_vqa_eagle \
     --ea-model-path ${CKPT_PATH} \
     --question-file /home/youngmin/workspace/llava-mm-vet.jsonl \
     --image-folder /home/youngmin/workspace/images \
-    --answers-file ./mm_vet_t0_0.jsonl \
+    --answers-file ${CKPT_PATH}/mm_vet_t0_0.jsonl \
     --temperature 0 \
     --conv-mode vicuna_v1 \
     --token-process ${TOK_PROCESS} \
