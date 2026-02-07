@@ -9,6 +9,7 @@ import numpy as np
 #jsonl_file1 = "/data/youngmin/checkpoints/cls_20token_40epoch/last/coco_cap_t0_0.jsonl"
 #jsonl_file1 = "/data/youngmin/checkpoints/cls_100token_40epoch/last/coco_cap_t0_0.jsonl"
 #jsonl_file1 = "/home/youngmin/workspace/finetune_w_img_1e-4_cls_hidden_llavashare_40epoch_embd/state_40/coco_cap_t0_0.jsonl"
+#jsonl_file1 = "/data/youngmin/checkpoints/aircache_20token_259736_40epoch/last/coco_cap_t0_0.jsonl"
 
 #jsonl_file2 = "/home/youngmin/workspace/llava-v1.5-7b_t1_coco.jsonl"  # 두 번째 JSONL 파일 경로 (cococap)
 
@@ -17,8 +18,9 @@ import numpy as np
 #jsonl_file1 = "/data/youngmin/checkpoints/cls_20token_40epoch/last/mm_vet_t0_0.jsonl"
 #jsonl_file1 = "/data/youngmin/checkpoints/cls_100token_40epoch/last/mm_vet_t0_0.jsonl"
 #jsonl_file1 = "/home/youngmin/workspace/finetune_w_img_1e-4_cls_hidden_llavashare_40epoch_embd/state_40/mm_vet_t0_0.jsonl"
+jsonl_file1 = "/data/youngmin/checkpoints/aircache_20token_259736_40epoch/last/mm_vet_t0_0.jsonl"
 
-#jsonl_file2 = "/home/youngmin/workspace/llava-v1.5-7b_t1_mmvet.jsonl"  # 두 번째 JSONL 파일 경로 (mmvet)
+jsonl_file2 = "/home/youngmin/workspace/llava-v1.5-7b_t1_mmvet.jsonl"  # 두 번째 JSONL 파일 경로 (mmvet)
 
 def calculate_avg_total_time(jsonl_file):
     """JSONL 파일에서 total_time 값을 읽어 평균을 계산하는 함수"""

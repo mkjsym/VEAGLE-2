@@ -10,7 +10,7 @@ echo "TOK_PROCESS: ${TOK_PROCESS}"
 echo "NUM_IMG_TOK: ${NUM_IMG_TOK}"
 
 python -m model_vqa_eagle \
-    --model-path llava-hf/llava-1.5-7b-hf \
+    --model-path /data/youngmin/models/llava-1.5-7b-hf \
     --ea-model-path ${CKPT_PATH} \
     --question-file /data/coco_caption/coco_question.jsonl \
     --image-folder /data/coco/val2014 \

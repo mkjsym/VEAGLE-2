@@ -10,8 +10,8 @@
 # bash cococap_eagle.sh /data/youngmin/checkpoints/cls_100token_40epoch/last 5 20
 # bash mmvet_eagle.sh /data/youngmin/checkpoints/cls_100token_40epoch/last 5 20
 
-bash cococap_eagle.sh /home/youngmin/workspace/finetune_w_img_1e-4_cls_hidden_llavashare_40epoch_embd/state_40 6 20
-bash mmvet_eagle.sh /home/youngmin/workspace/finetune_w_img_1e-4_cls_hidden_llavashare_40epoch_embd/state_40 6 20
+bash cococap_eagle.sh /data/youngmin/checkpoints/aircache_20token_259736_40epoch/last 6 20
+bash mmvet_eagle.sh /data/youngmin/checkpoints/aircache_20token_259736_40epoch/last 6 20
 
 #Image Token Strategy
 #0:nothing
