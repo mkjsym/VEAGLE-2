@@ -1,4 +1,4 @@
-# python eagle/ge_data/ge_data_all_llava_unified_aircache.py --start 0 --end 67999 --outdir /data/dataset_aircache --auto_distribute
+# python eagle/ge_data/ge_data_all_llava_unified_aircache.py --start 0 --end 259736 --outdir /data/dataset_aircache_top20_259736 --auto_distribute
 import argparse
 import os
 import sys
@@ -98,6 +98,76 @@ bigname = "/data/youngmin/models/llava-1.5-7b-hf"
 
 print(f"🔧 [Worker GPU {args.gpu_index[0]}] Initializing... Range: {args.start}-{args.end}")
 
+def keep_topk_image_token(
+    input_ids,
+    loss_mask,
+    hidden_states,
+    image_features,
+    attentions,
+    img_tok_index=32000,
+    topk=20,
+):
+    """
+    input_ids: [1, seq_len]
+    loss_mask: [1, seq_len]
+    hidden_states: [1, seq_len, dim]
+    attentions: list of [1, heads, seq_len, seq_len]
+    image_features: [1, 576, dim] or [576, dim]
+    """
+    device = input_ids.device
+
+    # 차원 축소
+    input_ids = input_ids[0].to(device)        # [seq_len]
+    loss_mask = loss_mask[0].to(device)        # [seq_len]
+    hidden_states = hidden_states[0].to(device)  # [seq_len, dim]
+    
+    # CLS 토큰 인덱스 찾기
+    cls_positions = (input_ids == img_tok_index).nonzero(as_tuple=True)[0]
+    if cls_positions.numel() == 0:
+        # CLS 토큰 없으면 원본 그대로
+        return input_ids.unsqueeze(0), loss_mask.unsqueeze(0), hidden_states, image_features
+    cls_index = cls_positions[0].item()
+
+    # 마지막 레이어의 CLS어텐션 점수
+    last_layer_attn = attentions[-1][0].to(device)  # [heads, seq_len, seq_len]
+    # CLS 토큰이 attend한 각 토큰별 평균 점수
+    attn_scores = last_layer_attn[:, cls_index, :].mean(dim=0)  # [seq_len]
+
+    # 모든 이미지 토큰 위치
+    image_token_indices = (input_ids == img_tok_index).nonzero(as_tuple=True)[0]
+
+    # top-k 이미지 토큰 뽑기
+    scores = attn_scores[image_token_indices].float()
+    k = min(topk, scores.size(0))
+    topk_local_idxs = torch.topk(scores, k).indices  # local indices
+    topk_global_idxs = image_token_indices[topk_local_idxs]
+
+    # CLS 인덱스도 추가
+    topk_global = torch.cat([topk_global_idxs, torch.tensor([cls_index], device=device)])
+    topk_global = torch.unique(topk_global)
+
+    # 필터 마스크
+    text_mask = input_ids != img_tok_index
+    img_mask = torch.zeros_like(input_ids, dtype=torch.bool, device=device)
+    img_mask[topk_global] = True
+    final_mask = text_mask | img_mask
+
+    # 필터링
+    filtered_input_ids = input_ids[final_mask].unsqueeze(0)
+    filtered_loss_mask = loss_mask[final_mask].unsqueeze(0)
+    filtered_hidden_states = hidden_states[final_mask]
+
+    # 이미지 피처 필터링
+    filtered_image_features = None
+    if image_features is not None:
+        feat = image_features[0] if image_features.dim() == 3 else image_features
+        feat = feat.to(device)
+        # topk_local_idxs는 CLS 제외한 순수 이미지 토큰이므로,
+        # 실제 피처에서 뽑을 때는 local_idxs만 사용
+        filtered_image_features = feat[topk_local_idxs]
+
+    return filtered_input_ids, filtered_loss_mask, filtered_hidden_states, filtered_image_features
+
 # -----------------------------------------------------------------------------
 # AirCache Function Implementation
 # -----------------------------------------------------------------------------
@@ -180,11 +250,11 @@ def build_dataset_rank(tokenizer, split="train", select=None):
     processor = AutoProcessor.from_pretrained(bigname)
     
     # 데이터셋 경로 (사용자 환경에 맞춤)
-    ds1 = load_dataset('json', data_files="/data/youngmin/legacy_sangjun/legacy_sangjun/EAGLE-LLAVA/playground/llava_instruct_150k.json")[split]
+    ds1 = load_dataset('json', data_files="/data/llava_instruct_150k.json")[split]
     # ds1 이미지 경로: COCO
     ds1 = ds1.add_column('image_folder', ['/data/coco/train2017'] * len(ds1))
     
-    ds2 = load_dataset('json', data_files="/data/youngmin/legacy_sangjun/legacy_sangjun/dataset/sharegpt4v_instruct_gpt4-vision_cap100k.json")[split]
+    ds2 = load_dataset('json', data_files="/data/sharegpt4v_instruct_gpt4-vision_cap100k.json")[split]
     # ds2 이미지 경로: COCO
     ds2 = ds2.add_column('image_folder', ['/data'] * len(ds2))
     

@@ -15,7 +15,7 @@ def list_files(path):
 parser = argparse.ArgumentParser(description='sp')
 parser.add_argument('--basepath', type=str, default='/data/youngmin/models/llava-1.5-7b-hf')
 parser.add_argument('--configpath', type=str, default="config.json")
-parser.add_argument('--pretrainedpath', type=str, default='/data/youngmin/legacy_sangjun/legacy_sangjun_data/ckpt/pretrain/state_50')
+parser.add_argument('--pretrainedpath', type=str, default='/data/pretrain/state_50')
 parser.add_argument('--lr', type=float, default=3e-5)
 parser.add_argument('--bs', type=int, default=4 )
 parser.add_argument('--epoch', type=int, default=20)
