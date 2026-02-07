@@ -54,9 +54,9 @@ def eval_model(args):
         torch_dtype=torch.float16,
         low_cpu_mem_usage=True,
         device_map="auto",
-        total_token=30,
-        top_k=8,
-        depth=3
+        total_token=60,
+        top_k=10,
+        depth=5
     )
     #yuhuili/EAGLE-Vicuna-7B-v1.3
     model.eval()

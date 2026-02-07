@@ -14,7 +14,7 @@ python -m model_vqa_eagle \
     --ea-model-path ${CKPT_PATH} \
     --question-file /data/coco_caption/coco_question.jsonl \
     --image-folder /data/coco/val2014 \
-    --answers-file ./coco_cap_t0_0.jsonl \
+    --answers-file ${CKPT_PATH}/coco_cap_t0_0.jsonl \
     --temperature 0 \
     --conv-mode vicuna_v1 \
     --token-process ${TOK_PROCESS} \
